@@ -86,7 +86,7 @@ export class KeywordAnalysis {
   }
 
   countOccurrencesInTags(tagName) {
-    const tags = document.querySelectorAll("title");
+    const tags = document.querySelectorAll(tagName);
     tags.forEach((tag) => {
       const tagContent = tag.innerText;
       const pattern = this.definePattern();
