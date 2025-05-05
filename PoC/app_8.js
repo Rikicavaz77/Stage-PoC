@@ -485,7 +485,7 @@ function sortKeywords(keywords, sortMode, sortDirection) {
     if (sortMode === "sort-by-score") {
       compare = a.relevanceScore - b.relevanceScore;
     } else if(sortMode === "sort-by-name") {
-      compare = a.keyword.localeCompare(b.keyword, undefined, { sensitive: 'base' });
+      compare = a.keyword.localeCompare(b.keyword, undefined, { sensitivity: 'base' });
     }
     return (sortDirection === "asc") ? compare : -compare;
   });
