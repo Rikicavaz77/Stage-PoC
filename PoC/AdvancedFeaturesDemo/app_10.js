@@ -83,7 +83,6 @@ function buildMatchesForNode(textNodes, index, pattern, keywordParts, relatedTag
   if (relatedTagsMap.has(node)) {
     matches.push(...relatedTagsMap.get(node));
     matches.sort((a, b) => a.matchStart - b.matchStart);
-    console.log(matches);
   }
   
   return matches;
