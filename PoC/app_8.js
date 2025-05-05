@@ -7,11 +7,19 @@ let i = 0;
 let fullText = "";
 let metaKeywords = [];
 let userKeywords = [];
+let displayMetaKeywords = [];
+let displayUserKeywords = [];
 let currentMetaPage = 1;
 let currentUserPage = 1;
 const pageSize = 5;
 let totalWords = 0;
 let totalUniqueWords = 0;
+let metaKeywordsSortMode = "sort-by-name";
+let userKeywordsSortMode = "sort-by-name";
+let metaKeywordsSortDirection = "";
+let userKeywordsSortDirection = "";
+let metaKeywordsFilterQuery = "";
+let userKeywordsFilterQuery = "";
 
 function isValidInlineElement(node) {
   if (node.nodeType !== Node.ELEMENT_NODE) return false;
@@ -89,11 +97,14 @@ function treeWalker() {
 }
 
 window.treeWalker = treeWalker;
+window.createTreeWalker = createTreeWalker;
 window.walker = walker;
 
 function countWords() {
   const walker = createTreeWalker();
-  const pattern = /[\p{L}\p{N}](?:[\p{L}\p{N}\-_.]*[\p{L}\p{N}])?/gu;
+  //const pattern = /[\p{L}\p{N}](?:[\p{L}\p{N}\-_.]*[\p{L}\p{N}])?/gu;
+  //const pattern = /[\p{L}\p{N}]+(?:[\p{L}\p{N}\-_.]*[\p{L}\p{N}]|['’][\p{L}\p{N}]*)?/gu;
+  const pattern = /[\p{L}\p{N}]+(?:['’\-_.][\p{L}\p{N}]+)*['’]?/gu;
   let node;
   let words = [];
   while ((node = walker.nextNode())) {
@@ -105,6 +116,12 @@ function countWords() {
 }
 
 function loadKeywordsAnalysisOverview() {
+  const words = countWords();
+  document.getElementById("words-content").querySelector("p").innerHTML = totalWords;
+
+  totalUniqueWords = new Set(words).size;
+  document.getElementById("unique-words-content").querySelector("p").innerHTML = totalUniqueWords;
+
   const metaTagKeywords = document.querySelector("meta[name='keywords' i]");
   const metaTagKeywordsContent = metaTagKeywords?.content;
   document.getElementById("keywords-content").querySelector("p").innerHTML = metaTagKeywordsContent ?? "Missing";
@@ -112,18 +129,13 @@ function loadKeywordsAnalysisOverview() {
     const pattern = new RegExp(",\\s*", "gi");
     const keywords = metaTagKeywordsContent.split(pattern);
     metaKeywords = keywords.map((keyword) => {
-      return new KeywordAnalysis(keyword);
+      return new KeywordAnalysis(keyword, walker, totalWords);
     });
+    displayMetaKeywords = [...metaKeywords];
   }
 
   const lang = document.documentElement.lang;
   document.getElementById("lang-content").querySelector("p").innerHTML = lang || 'Missing';
-
-  const words = countWords();
-  document.getElementById("words-content").querySelector("p").innerHTML = totalWords;
-
-  totalUniqueWords = new Set(words).size;
-  document.getElementById("unique-words-content").querySelector("p").innerHTML = totalUniqueWords;
 }
 
 function toggleTooltip(event) {
@@ -150,7 +162,7 @@ function highlightKeyword(keyword) {
     textNodes.push(node);
   }
 
-  const pattern = new RegExp(`(${keyword})`, "gi");
+  const pattern = new RegExp(`(${keyword})`, "i");
 
   textNodes.forEach((node) => {
     if (pattern.test(node.nodeValue)) {
@@ -159,7 +171,7 @@ function highlightKeyword(keyword) {
       const parent = getParentName(node);
       
       parts.forEach((part) => {
-        if (pattern.test(part)) {
+        if (part !== "" && pattern.test(part)) {
           const span = document.createElement("span");
           span.classList.add("highlight-keyword");
           span.style.setProperty('--highlight-bg-color', getComputedStyle(document.documentElement).getPropertyValue(`--highlight-${parent.toLowerCase()}-bg-color`));
@@ -168,9 +180,9 @@ function highlightKeyword(keyword) {
           if (parent.length <= 2) {
             span.style.setProperty('--highlight-label', `"${parent}"`);
           }
-          span.innerHTML =  part;
+          span.innerHTML = part;
           fragment.appendChild(span);
-        } else {
+        } else if (part !== "") {
           const newTextNode = document.createTextNode(part);
           fragment.appendChild(newTextNode);
         }
@@ -261,71 +273,240 @@ function renderKeywords(keywordsContainer, keywords, currentPage = 1) {
 }
 
 function renderMetaKeywordsContainer() {
-  if (metaKeywords.length <= 0) return;
+  if (displayMetaKeywords.length <= 0) return;
 
   const metaKeywordsContainer = document.querySelector(".meta-keywords-container");
   metaKeywordsContainer.innerHTML = `
     <h2>Meta keywords</h2>
+    <div class="filters-container">
+      <div class="search-container">
+        <div class="input-wrapper">
+          <span class="prefix">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" fill="currentColor" class="icon icon-small">
+              <path fill-rule="evenodd" d="M9.965 11.026a5 5 0 1 1 1.06-1.06l2.755 2.754a.75.75 0 1 1-1.06 1.06l-2.755-2.754ZM10.5 7a3.5 3.5 0 1 1-7 0 3.5 3.5 0 0 1 7 0Z" clip-rule="evenodd" />
+            </svg>
+          </span>
+          <input type="text" id="search-meta-keyword" name="search-keyword" class="search-keyword" placeholder="Search keyword...">
+        </div>
+      </div>
+      <div class="sort-container">
+        <button class="sort-btn" data-sort="desc">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" fill="currentColor" class="icon">
+            <path fill-rule="evenodd" d="M2 2.75A.75.75 0 0 1 2.75 2h9.5a.75.75 0 0 1 0 1.5h-9.5A.75.75 0 0 1 2 2.75ZM2 6.25a.75.75 0 0 1 .75-.75h5.5a.75.75 0 0 1 0 1.5h-5.5A.75.75 0 0 1 2 6.25Zm0 3.5A.75.75 0 0 1 2.75 9h3.5a.75.75 0 0 1 0 1.5h-3.5A.75.75 0 0 1 2 9.75ZM14.78 11.47a.75.75 0 0 1 0 1.06l-2.25 2.25a.75.75 0 0 1-1.06 0l-2.25-2.25a.75.75 0 1 1 1.06-1.06l.97.97V6.75a.75.75 0 0 1 1.5 0v5.69l.97-.97a.75.75 0 0 1 1.06 0Z" clip-rule="evenodd" />
+          </svg>
+        </button>
+        <button class="sort-btn" data-sort="asc">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" fill="currentColor" class="icon">
+            <path fill-rule="evenodd" d="M2 2.75A.75.75 0 0 1 2.75 2h9.5a.75.75 0 0 1 0 1.5h-9.5A.75.75 0 0 1 2 2.75ZM2 6.25a.75.75 0 0 1 .75-.75h5.5a.75.75 0 0 1 0 1.5h-5.5A.75.75 0 0 1 2 6.25Zm0 3.5A.75.75 0 0 1 2.75 9h3.5a.75.75 0 0 1 0 1.5h-3.5A.75.75 0 0 1 2 9.75ZM9.22 9.53a.75.75 0 0 1 0-1.06l2.25-2.25a.75.75 0 0 1 1.06 0l2.25 2.25a.75.75 0 0 1-1.06 1.06l-.97-.97v5.69a.75.75 0 0 1-1.5 0V8.56l-.97.97a.75.75 0 0 1-1.06 0Z" clip-rule="evenodd" />
+          </svg>
+        </button>
+        <select id="sort-meta-keywords-dropdown" name="sort-dropdown" class="sort-dropdown">
+          <option value="sort-by-name">Sort by name</option>
+          <option value="sort-by-score">Sort by score</option>
+        </select>
+        <button class="remove-filters">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" class="icon">
+            <path d="M16.284,14.87l5.716-5.881v-3.989c0-1.654-1.346-3-3-3H4c-.179,0-.355,.025-.529,.057L1.457,.043,.043,1.457,22.543,23.957l1.414-1.414-7.673-7.673Zm-1.284,4.386v4.744l-6-4.5v-3.309L2,8.989v-2.813l13,13.079Z"/>
+          </svg>
+        </button>
+      </div>
+    </div>
     <ul></ul>
   `;
 
-  renderKeywords(metaKeywordsContainer, metaKeywords, currentMetaPage);
-  renderPages(metaKeywordsContainer, metaKeywords, currentMetaPage);
-  metaKeywords.forEach(async (metaKeyword) => {
+  renderKeywords(metaKeywordsContainer, displayMetaKeywords, currentMetaPage);
+  renderPages(metaKeywordsContainer, displayMetaKeywords, currentMetaPage);
+  displayMetaKeywords.forEach(async (metaKeyword) => {
     await metaKeyword.analyze();
     metaKeyword.status = "done";
-    if (isItemVisible(metaKeywords, metaKeyword, currentMetaPage)) {
-      renderKeywords(metaKeywordsContainer, metaKeywords, currentMetaPage);
-      renderPages(metaKeywordsContainer, metaKeywords, currentMetaPage);
+    if (isItemVisible(displayMetaKeywords, metaKeyword, currentMetaPage)) {
+      renderKeywords(metaKeywordsContainer, displayMetaKeywords, currentMetaPage);
+      renderPages(metaKeywordsContainer, displayMetaKeywords, currentMetaPage);
     }
   }); 
 
+  metaKeywordsContainer.querySelector(".sort-dropdown").addEventListener("change", (event) => {
+    metaKeywordsSortMode = event.target.value;
+  });
+
+  metaKeywordsContainer.querySelector(".search-keyword").addEventListener("input", (event) => {
+    metaKeywordsFilterQuery = event.target.value;
+    updateVisibleKeywords(displayMetaKeywords, metaKeywords, metaKeywordsFilterQuery, metaKeywordsSortMode, metaKeywordsSortDirection);
+    renderKeywords(metaKeywordsContainer, displayMetaKeywords);
+    renderPages(metaKeywordsContainer, displayMetaKeywords);
+  });
+
   metaKeywordsContainer.addEventListener("click", (event) => {
+    if (event.target.closest(".sort-container .sort-btn")) {
+      event.target.closest(".sort-container").querySelectorAll(".sort-btn").forEach((element) => {
+        element.classList.remove("active");
+      });
+      const sortBtn = event.target.closest(".sort-container .sort-btn");
+      sortBtn.classList.add("active");
+      metaKeywordsSortDirection = sortBtn.dataset.sort;
+      sortKeywords(displayMetaKeywords, metaKeywordsSortMode, metaKeywordsSortDirection);
+      renderKeywords(metaKeywordsContainer, displayMetaKeywords, currentMetaPage);
+      renderPages(metaKeywordsContainer, displayMetaKeywords, currentMetaPage);
+    }
+
+    if (event.target.closest(".sort-container .remove-filters")) {
+      displayMetaKeywords = [...metaKeywords];
+      metaKeywordsFilterQuery = "";
+      metaKeywordsSortMode = "sort-by-name";
+      metaKeywordsSortDirection = "";
+      event.target.closest(".filters-container").querySelectorAll(".sort-btn").forEach((element) => {
+        element.classList.remove("active");
+      });
+      event.target.closest(".filters-container").querySelector(".sort-dropdown").value = metaKeywordsSortMode;
+      event.target.closest(".filters-container").querySelector(".search-keyword").value = metaKeywordsFilterQuery;
+      renderKeywords(metaKeywordsContainer, displayMetaKeywords, currentMetaPage);
+      renderPages(metaKeywordsContainer, displayMetaKeywords, currentMetaPage);
+    }
+
     if (event.target.closest(".highlight")) {
       const keywordIndex = event.target.closest("li")?.dataset.keywordIndex;
       uncheckHighlightKeywordCheckbox();
-      highlightKeyword(metaKeywords[keywordIndex].keyword);
+      highlightKeyword(displayMetaKeywords[keywordIndex].keyword);
     }
 
     if (event.target.closest(".view-details")) {
       const keywordIndex = event.target.closest("li")?.dataset.keywordIndex;
-      renderDetailsPage(metaKeywords, keywordIndex);
+      renderDetailsPage(displayMetaKeywords, keywordIndex);
     }
 
     if (event.target.closest("ol.pages-container button:not(.active)")) {
       currentMetaPage = parseInt(event.target.dataset.page);
-      renderKeywords(metaKeywordsContainer, metaKeywords, currentMetaPage);
-      renderPages(metaKeywordsContainer, metaKeywords, currentMetaPage);
+      renderKeywords(metaKeywordsContainer, displayMetaKeywords, currentMetaPage);
+      renderPages(metaKeywordsContainer, displayMetaKeywords, currentMetaPage);
     }
   });
 }
 
 function renderUserKeywordsContainer() {
   const userKeywordsContainer = document.querySelector(".user-keywords-container");
-  const title = document.createElement("h2");
-  title.textContent = "User keywords";
-  userKeywordsContainer.appendChild(title);
-  const keywordsList = document.createElement("ul");
-  userKeywordsContainer.appendChild(keywordsList);
+  userKeywordsContainer.innerHTML = `
+    <h2>User keywords</h2>
+    <div class="filters-container">
+      <div class="search-container">
+        <div class="input-wrapper">
+          <span class="prefix">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" fill="currentColor" class="icon icon-small">
+              <path fill-rule="evenodd" d="M9.965 11.026a5 5 0 1 1 1.06-1.06l2.755 2.754a.75.75 0 1 1-1.06 1.06l-2.755-2.754ZM10.5 7a3.5 3.5 0 1 1-7 0 3.5 3.5 0 0 1 7 0Z" clip-rule="evenodd" />
+            </svg>
+          </span>
+          <input type="text" id="search-user-keyword" name="search-keyword" class="search-keyword" placeholder="Search keyword...">
+        </div>
+      </div>
+      <div class="sort-container">
+        <button class="sort-btn" data-sort="desc">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" fill="currentColor" class="icon">
+            <path fill-rule="evenodd" d="M2 2.75A.75.75 0 0 1 2.75 2h9.5a.75.75 0 0 1 0 1.5h-9.5A.75.75 0 0 1 2 2.75ZM2 6.25a.75.75 0 0 1 .75-.75h5.5a.75.75 0 0 1 0 1.5h-5.5A.75.75 0 0 1 2 6.25Zm0 3.5A.75.75 0 0 1 2.75 9h3.5a.75.75 0 0 1 0 1.5h-3.5A.75.75 0 0 1 2 9.75ZM14.78 11.47a.75.75 0 0 1 0 1.06l-2.25 2.25a.75.75 0 0 1-1.06 0l-2.25-2.25a.75.75 0 1 1 1.06-1.06l.97.97V6.75a.75.75 0 0 1 1.5 0v5.69l.97-.97a.75.75 0 0 1 1.06 0Z" clip-rule="evenodd" />
+          </svg>
+        </button>
+        <button class="sort-btn" data-sort="asc">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" fill="currentColor" class="icon">
+            <path fill-rule="evenodd" d="M2 2.75A.75.75 0 0 1 2.75 2h9.5a.75.75 0 0 1 0 1.5h-9.5A.75.75 0 0 1 2 2.75ZM2 6.25a.75.75 0 0 1 .75-.75h5.5a.75.75 0 0 1 0 1.5h-5.5A.75.75 0 0 1 2 6.25Zm0 3.5A.75.75 0 0 1 2.75 9h3.5a.75.75 0 0 1 0 1.5h-3.5A.75.75 0 0 1 2 9.75ZM9.22 9.53a.75.75 0 0 1 0-1.06l2.25-2.25a.75.75 0 0 1 1.06 0l2.25 2.25a.75.75 0 0 1-1.06 1.06l-.97-.97v5.69a.75.75 0 0 1-1.5 0V8.56l-.97.97a.75.75 0 0 1-1.06 0Z" clip-rule="evenodd" />
+          </svg>
+        </button>
+        <select id="sort-user-keywords-dropdown" name="sort-dropdown" class="sort-dropdown">
+          <option value="sort-by-name">Sort by name</option>
+          <option value="sort-by-score">Sort by score</option>
+        </select>
+        <button class="remove-filters">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" class="icon">
+            <path d="M16.284,14.87l5.716-5.881v-3.989c0-1.654-1.346-3-3-3H4c-.179,0-.355,.025-.529,.057L1.457,.043,.043,1.457,22.543,23.957l1.414-1.414-7.673-7.673Zm-1.284,4.386v4.744l-6-4.5v-3.309L2,8.989v-2.813l13,13.079Z"/>
+          </svg>
+        </button>
+      </div>
+    </div>
+    <ul></ul>
+  `;
+
+  userKeywordsContainer.querySelector(".sort-dropdown").addEventListener("change", (event) => {
+    userKeywordsSortMode = event.target.value;
+  });
+
+  userKeywordsContainer.querySelector(".search-keyword").addEventListener("input", (event) => {
+    userKeywordsFilterQuery = event.target.value;
+    updateVisibleKeywords(displayUserKeywords, userKeywords, userKeywordsFilterQuery, userKeywordsSortMode, userKeywordsSortDirection);
+    renderKeywords(userKeywordsContainer, displayUserKeywords);
+    renderPages(userKeywordsContainer, displayUserKeywords);
+  });
 
   userKeywordsContainer.addEventListener("click", (event) => {
+    if (event.target.closest(".sort-container .sort-btn")) {
+      event.target.closest(".sort-container").querySelectorAll(".sort-btn").forEach((element) => {
+        element.classList.remove("active");
+      });
+      const sortBtn = event.target.closest(".sort-container .sort-btn");
+      sortBtn.classList.add("active");
+      userKeywordsSortDirection = sortBtn.dataset.sort;
+      sortKeywords(displayUserKeywords, userKeywordsSortMode, userKeywordsSortDirection);
+      renderKeywords(userKeywordsContainer, displayUserKeywords, currentUserPage);
+      renderPages(userKeywordsContainer, displayUserKeywords, currentUserPage);
+    }
+
+    if (event.target.closest(".sort-container .remove-filters")) {
+      displayUserKeywords = [...userKeywords];
+      userKeywordsFilterQuery = "";
+      userKeywordsSortMode = "sort-by-name";
+      userKeywordsSortDirection = "";
+      event.target.closest(".filters-container").querySelectorAll(".sort-btn").forEach((element) => {
+        element.classList.remove("active");
+      });
+      event.target.closest(".filters-container").querySelector(".sort-dropdown").value = userKeywordsSortMode;
+      event.target.closest(".filters-container").querySelector(".search-keyword").value = userKeywordsFilterQuery;
+      renderKeywords(userKeywordsContainer, displayUserKeywords, currentUserPage);
+      renderPages(userKeywordsContainer, displayUserKeywords, currentUserPage);
+    }
+
     if (event.target.closest(".highlight")) {
       const keywordIndex = event.target.closest("li")?.dataset.keywordIndex;
       uncheckHighlightKeywordCheckbox();
-      highlightKeyword(userKeywords[keywordIndex].keyword);
+      highlightKeyword(displayUserKeywords[keywordIndex].keyword);
     }
 
     if (event.target.closest(".view-details")) {
       const keywordIndex = event.target.closest("li")?.dataset.keywordIndex;
-      renderDetailsPage(userKeywords, keywordIndex);
+      renderDetailsPage(displayUserKeywords, keywordIndex);
     }
 
     if (event.target.closest("ol.pages-container button:not(.active)")) {
       currentUserPage = parseInt(event.target.dataset.page);
-      renderKeywords(userKeywordsContainer, userKeywords, currentUserPage);
-      renderPages(userKeywordsContainer, userKeywords, currentUserPage);
+      renderKeywords(userKeywordsContainer, displayUserKeywords, currentUserPage);
+      renderPages(userKeywordsContainer, displayUserKeywords, currentUserPage);
     }
   });
+}
+
+function sortKeywords(keywords, sortMode, sortDirection) {
+  keywords.sort((a, b) => {
+    let compare;
+    if (sortMode === "sort-by-score") {
+      compare = a.relevanceScore - b.relevanceScore;
+    } else if(sortMode === "sort-by-name") {
+      compare = a.keyword.localeCompare(b.keyword, undefined, { sensitive: 'base' });
+    }
+    return (sortDirection === "asc") ? compare : -compare;
+  });
+}
+
+function filterKeywords(keywords, filterQuery) {
+  const pattern = new RegExp(`${filterQuery}`, "i");
+  const filteredKeywords = keywords.filter((keywordObj) => {
+    return pattern.test(keywordObj.keyword);
+  });
+  return filteredKeywords;
+}
+
+function updateVisibleKeywords(displayKeywords, keywords, filterQuery, sortMode, sortDirection) {
+  const result = filterQuery ? filterKeywords(keywords, filterQuery) : [...keywords];
+
+  if (sortMode && sortDirection) {
+    sortKeywords(result, sortMode, sortDirection);
+  }
+
+  displayKeywords.splice(0, displayKeywords.length, ...result);
 }
 
 /* function showPages() {
@@ -387,16 +568,29 @@ function renderDetailsPage(keywords, keywordIndex) {
   const keywordObj = keywords[keywordIndex];
   detailsView.innerHTML = `
     <h1>Keyword analysis results</h1>
-    <div class="score-container">
-      <p class="${
-        keywordObj.relevanceScore < 50 ? 'low-score' : 
-        keywordObj.relevanceScore < 80 ? 'medium-score' :
-        'high-score'
-      }">${keywordObj.relevanceScore}</p>
-    </div>
     <div class="analysis-container">
       <h2>Keyword:</h2>
       <p>${keywordObj.keyword}</p>
+    </div>
+    <div class="analysis-container">
+      <div class="detailed-information">
+        <h2>Structural importance score:</h2>
+        <div class="tooltip" tabindex="0" aria-describedby="tooltip-text">
+          <div class="tooltip-content">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="icon icon-micro">
+              <path fill-rule="evenodd" d="M2.25 12c0-5.385 4.365-9.75 9.75-9.75s9.75 4.365 9.75 9.75-4.365 9.75-9.75 9.75S2.25 17.385 2.25 12Zm11.378-3.917c-.89-.777-2.366-.777-3.255 0a.75.75 0 0 1-.988-1.129c1.454-1.272 3.776-1.272 5.23 0 1.513 1.324 1.513 3.518 0 4.842a3.75 3.75 0 0 1-.837.552c-.676.328-1.028.774-1.028 1.152v.75a.75.75 0 0 1-1.5 0v-.75c0-1.279 1.06-2.107 1.875-2.502.182-.088.351-.199.503-.331.83-.727.83-1.857 0-2.584ZM12 18a.75.75 0 1 0 0-1.5.75.75 0 0 0 0 1.5Z" clip-rule="evenodd" />
+            </svg>    
+            <span id="tooltip-text" class="not-visible">The structural importance score highlights the impact of a keyword in strategic points of the page (title, meta description, H1-H6 tags, links, image alt attribute).</span>
+          </div>                            
+        </div>
+      </div>  
+      <div class="score-container">
+        <p class="${
+          keywordObj.relevanceScore < 50 ? 'low-score' : 
+          keywordObj.relevanceScore < 80 ? 'medium-score' :
+          'high-score'
+        }">${keywordObj.relevanceScore}</p>
+      </div>
     </div>
     <div class="analysis-container">
       <h2>Frequency:</h2>
@@ -409,8 +603,8 @@ function renderDetailsPage(keywords, keywordIndex) {
     <div class="analysis-container">
       <h2>Tag occurrences:</h2>
       <ul>
-        ${Object.entries(keywordObj.tagOccurrences)
-          .map(([key, value]) => `<li><h3>${key.toUpperCase()}</h3><p>${value}</p></li>`)
+        ${Object.entries(keywordObj.tagData)
+          .map(([key, value]) => `<li><h3>${key.toUpperCase()}</h3><p>${value.keywordOccurrences}</p></li>`)
           .join('')}
       </ul>
     </div>
@@ -419,6 +613,13 @@ function renderDetailsPage(keywords, keywordIndex) {
   if (anchor) {
     anchor.scrollIntoView();
   }
+  const tooltip = detailsView.querySelectorAll(".tooltip-content");
+  tooltip.forEach((element) => {
+    element.addEventListener("mouseover", toggleTooltip);
+  });
+  tooltip.forEach((element) => {
+    element.addEventListener("mouseout", toggleTooltip);
+  });
 }
 
 function isItemVisible(keywords, keywordObj, currentPage = 1) {
@@ -433,19 +634,20 @@ async function analyzeKeyword(event) {
   const keyword = document.getElementById("insert-keyword")?.value.trim();
   const userKeywordsContainer = document.querySelector(".user-keywords-container");
   if (!keyword || keyword.length <= 0) return; 
-  const keywordObj = new KeywordAnalysis(keyword);
+  const keywordObj = new KeywordAnalysis(keyword, walker, totalWords);
   userKeywords.push(keywordObj);
   if (userKeywords.slice(0, -1).length <= 0) {
     renderUserKeywordsContainer();
   }
-  if (isItemVisible(userKeywords, keywordObj, currentUserPage)) {
-    renderKeywords(userKeywordsContainer, userKeywords, currentUserPage);
-    renderPages(userKeywordsContainer, userKeywords, currentUserPage);
+  displayUserKeywords = [...userKeywords];
+  if (isItemVisible(displayUserKeywords, keywordObj, currentUserPage)) {
+    renderKeywords(userKeywordsContainer, displayUserKeywords, currentUserPage);
+    renderPages(userKeywordsContainer, displayUserKeywords, currentUserPage);
   }
   await keywordObj.analyze();
-  if (isItemVisible(userKeywords, keywordObj, currentUserPage)) {
-    renderKeywords(userKeywordsContainer, userKeywords, currentUserPage);
-    renderPages(userKeywordsContainer, userKeywords, currentUserPage);
+  if (isItemVisible(displayUserKeywords, keywordObj, currentUserPage)) {
+    renderKeywords(userKeywordsContainer, displayUserKeywords, currentUserPage);
+    renderPages(userKeywordsContainer, displayUserKeywords, currentUserPage);
   }
 }
 

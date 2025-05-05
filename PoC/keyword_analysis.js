@@ -6,20 +6,21 @@ export class KeywordAnalysis {
     this.status = status;
     this.frequency = 0;
     this.density = 0;
-    this.tagOccurrences = {
-      title: 0,
-      description: 0,
-      keywords: 0,     
-      p: 0,
-      h1: 0,
-      h2: 0,
-      h3: 0,
-      h4: 0,
-      h5: 0,
-      h6: 0,
-      a: 0,
-      alt: 0
+    this.tagData = {
+      title:      { keywordOccurrences: 0, weight: 10, tagOccurrences: 0 },
+      description:{ keywordOccurrences: 0, weight: 6, tagOccurrences: 0 },
+      keywords:   { keywordOccurrences: 0, weight: 0, tagOccurrences: 0 },
+      h1:         { keywordOccurrences: 0, weight: 5, tagOccurrences: 0 },
+      h2:         { keywordOccurrences: 0, weight: 4, tagOccurrences: 0 },
+      h3:         { keywordOccurrences: 0, weight: 3, tagOccurrences: 0 },
+      h4:         { keywordOccurrences: 0, weight: 2, tagOccurrences: 0 },
+      h5:         { keywordOccurrences: 0, weight: 2, tagOccurrences: 0 },
+      h6:         { keywordOccurrences: 0, weight: 2, tagOccurrences: 0 },
+      p:          { keywordOccurrences: 0, weight: 0, tagOccurrences: 0 },
+      a:          { keywordOccurrences: 0, weight: 1.5, tagOccurrences: 0 },
+      alt:        { keywordOccurrences: 0, weight: 2.5, tagOccurrences: 0 }
     };
+    this.pattern = this.definePattern();
     this.relevanceScore = 0;
     /* this.weights = {
       title: 10,
@@ -85,34 +86,74 @@ export class KeywordAnalysis {
     return new RegExp(`(?<![\\p{L}\\p{N}]|[\\p{L}\\p{N}][\-_.])${this.escapeRegExp(this.keyword)}(?![\\p{L}\\p{N}]|[\-_.][\\p{L}\\p{N}])`, 'giu');
   }
 
-  countOccurrencesInTags(tagName) {
-    const tags = document.querySelectorAll(tagName);
+  calculateFrequency() {
+    this.treeWalker.currentNode = this.treeWalker.root;
+    let node;
+    while ((node = this.treeWalker.nextNode())) {
+      const matches = node.nodeValue.match(this.pattern) || [];
+      this.frequency += matches.length;
+    }
+  }
+
+  countOccurrencesInTag(tagName) {
+    const tags = Array.from(document.querySelectorAll(`${tagName}`)).filter(tag => {
+      return !tag.closest("aside");
+    });
+    this.tagData[tagName].tagOccurrences = tags.length;
     tags.forEach((tag) => {
       const tagContent = tag.innerText;
-      const pattern = this.definePattern();
-      const matches = tagContent.match(pattern) || [];
-      this.tagOccurrences[tagName] += matches.length;
+      const matches = tagContent.match(this.pattern) || [];
+      this.tagData[tagName].keywordOccurrences += matches.length;
     });
   }
 
-  countOccurrencesInMetaTags(tagName) {
+  countOccurrencesInMetaTag(tagName) {
     const tag = document.querySelector(`meta[name='${tagName}' i]`);
+    this.tagData[tagName].tagOccurrences = tag ? 1 : 0;
     const tagContent = tag?.content;
     if (tagContent) {
-      const pattern = this.definePattern();
-      const matches = tagContent.match(pattern) || [];
-      this.tagOccurrences[tagName] = matches.length;
+      const matches = tagContent.match(this.pattern) || [];
+      this.tagData[tagName].keywordOccurrences = matches.length;
     }
   } 
 
+  countOccurrencesInAltAttributes() {
+    const tags = Array.from(document.querySelectorAll("img[alt]")).filter(tag => {
+      return !tag.closest("aside");
+    });
+    this.tagData.alt.tagOccurrences = tags.length;
+    tags.forEach((tag) => {
+      const tagContent = tag.alt;
+      const matches = tagContent.match(this.pattern) || [];
+      this.tagData.alt.keywordOccurrences += matches.length;
+    });
+  } 
+
+  calculateRelevanceScore() {
+    let score = 0;
+    let maxScore = 0;
+    Object.entries(this.tagData).forEach(([_, data]) => {
+      if (data.weight && data.tagOccurrences > 0) {
+        score += (data.keywordOccurrences / data.tagOccurrences) * data.weight;
+        maxScore += data.weight;
+      }
+    });
+    this.relevanceScore = Math.ceil((score / maxScore) * 100);
+  }
+
   async analyze() {
-    this.frequency = Math.floor(Math.random() * 100);
-    this.density = (this.frequency / this.totalWords) * 100;
-    this.countOccurrencesInTags("title");
-    this.countOccurrencesInMetaTags("description");
-    this.countOccurrencesInMetaTags("keywords");
-    this.relevanceScore = Math.floor(Math.random() * 100);
-    //this.calculateRelevanceScore();
+    this.calculateFrequency();
+    this.density = ((this.frequency / Math.max(1, this.totalWords)) * 100).toFixed(2);
+    this.countOccurrencesInTag("title");
+    this.countOccurrencesInMetaTag("description");
+    this.countOccurrencesInMetaTag("keywords");
+    for (let i = 1; i <= 6; i++) {
+      this.countOccurrencesInTag(`h${i}`);
+    }
+    this.countOccurrencesInTag("p");
+    this.countOccurrencesInTag("a");
+    this.countOccurrencesInAltAttributes();
+    this.calculateRelevanceScore();
     this.status = "done";
   }
 }

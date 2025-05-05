@@ -121,6 +121,34 @@ html body {
   100% { transform: rotate(360deg); }
 }
 
+.tooltip {
+  position: relative;
+  flex: 1 1 auto;
+  display: flex;
+}
+
+.tooltip .tooltip-content {
+  display: flex;
+  align-items: center;
+}
+
+.tooltip .icon {
+  color: #474747;
+}
+
+.tooltip span {
+  font-size: 0.7em;
+  background-color: #000;
+  color: #fff;
+  position: absolute;
+  top: 20px;
+  left: calc(-250px + 100%);
+  text-align: center;
+  padding: 0.4em;
+  border-radius: 6px;
+  z-index: 1;
+}
+
 .main-content {
   position: relative;
 }
@@ -278,36 +306,6 @@ html body {
   max-width: 200px;
 }
 
-.keywords-analysis-overview ul li .info-container .header .tooltip {
-  position: relative;
-  flex: 1 1 auto;
-  display: flex;
-}
-
-.keywords-analysis-overview ul li .info-container .header .tooltip .tooltip-content {
-  display: flex;
-  align-items: center;
-}
-
-.tooltip .icon {
-  color: #474747;
-}
-
-.tooltip span {
-  font-size: 0.7em;
-  background-color: #000;
-  color: #fff;
-  position: absolute;
-  top: 20px;
-  left: -10px;
-  width: 100%;
-  text-align: center;
-  padding: 0.4em;
-  border-radius: 6px;
-  box-sizing: content-box;
-  z-index: 1;
-}
-
 .keywords-analysis-overview ul li .info-container .body p {
   font-size: 0.7em;
   font-weight: 500;
@@ -320,6 +318,85 @@ html body {
 .keywords-container h2 {
   font-size: 1.2em;
 }
+
+.filters-container {
+  display: flex;
+  flex-direction: column;
+  row-gap: 0.8em;
+  margin-top: 0.5em;
+}
+
+.search-container .input-wrapper {
+  display: flex;
+  align-items: center;
+  max-width: 250px;
+  width: 100%;
+  padding: 0.375em 0.625em;
+  border-radius: 6px;
+  border: 1px solid #bfbdbd;
+  box-shadow: 0 0 #0000, 0 0 #0000, 0 1px 3px 0 rgb(0 0 0 / .1), 0 1px 2px -1px rgb(0 0 0 / .1);
+}
+
+.search-container input {
+  background-color: transparent;
+  flex: 1;
+  min-width: 0;
+  border: none;
+  outline: none;
+}
+
+.search-container .prefix {
+  color: #5f5f5f;
+  margin-right: 0.5em;
+}
+
+.search-container .prefix .icon {
+  vertical-align: middle;
+}
+
+.sort-container {
+  display: flex;
+  flex-wrap: nowrap;
+  column-gap: 0.5em;
+}
+
+.sort-container button {
+  background-color: rgba(235, 159, 197, 0.4);
+  color: rgb(175, 11, 204);
+  padding: 0.5em;
+  border-radius: 6px;
+  border: none;
+  cursor: pointer;
+}
+
+.sort-container button .icon {
+  width: 1.5em;
+  height: 1.5em;
+  vertical-align: middle;
+}
+
+.sort-container .sort-btn.active {
+  background-color: rgb(175, 11, 204);
+  color: #fff;
+}
+
+.sort-container .sort-dropdown {
+  background-color: rgba(235, 159, 197, 0.4);
+  color: rgb(175, 11, 204);
+  font-weight: bold;
+  border-radius: 6px;
+  border: none;
+  outline: none;
+}
+
+.sort-container .sort-dropdown option {
+  font-weight: bold;
+}
+
+.sort-container .remove-filters {
+  background-color: transparent;
+  color: #000;
+} 
 
 .keywords-container ul {
   list-style-type: none;
@@ -396,7 +473,7 @@ html body {
   font-size: 1.5em;
 }
 
-.user-keywords-container .insert-keyword-box {
+.insert-keyword-box {
   display: flex;
   justify-content: center;
   column-gap: 0.8em;
@@ -404,7 +481,7 @@ html body {
   margin-top: 0.3em;
 }
 
-.user-keywords-container .insert-keyword-box .input-wrapper {
+.insert-keyword-box .input-wrapper {
   display: flex;
   align-items: center;
   max-width: 200px;
@@ -415,7 +492,7 @@ html body {
   box-shadow: 0 0 #0000, 0 0 #0000, 0 1px 3px 0 rgb(0 0 0 / .1), 0 1px 2px -1px rgb(0 0 0 / .1);
 }
 
-.user-keywords-container .insert-keyword-box input {
+.insert-keyword-box input {
   background-color: transparent;
   flex: 1;
   min-width: 0;
@@ -423,16 +500,16 @@ html body {
   outline: none;
 }
 
-.user-keywords-container .insert-keyword-box .prefix {
+.insert-keyword-box .prefix {
   color: #5f5f5f;
   margin-right: 0.5em;
 }
 
-.user-keywords-container .insert-keyword-box .prefix .icon {
+.insert-keyword-box .prefix .icon {
   vertical-align: middle;
 }
 
-.user-keywords-container .insert-keyword-box .analyze-keyword {
+.insert-keyword-box .analyze-keyword {
   background-color: #af0bcc;
   color: #fff;
   padding: 0.5em 0.8em;
@@ -441,7 +518,7 @@ html body {
   cursor: pointer;
 }
 
-.user-keywords-container .highlight-keyword-box {
+.highlight-keyword-box {
   display: flex;
   align-items: center;
   column-gap: 0.5em;
@@ -449,7 +526,7 @@ html body {
   margin-bottom: 0.8em;
 }
 
-.user-keywords-container .highlight-keyword-box input {
+.highlight-keyword-box input {
   appearance: none;
   -webkit-appearance: none;
   -moz-appearance: none;
@@ -464,7 +541,7 @@ html body {
   transition: .2s ease-out;
 }
 
-.user-keywords-container .highlight-keyword-box input::before {
+.highlight-keyword-box input::before {
   content: "";
   background-color: #fff;
   width: 0.5rem;
@@ -474,25 +551,50 @@ html body {
   transition: transform 0.2s ease-in-out;
 }
 
-.user-keywords-container .highlight-keyword-box input:checked {
+.highlight-keyword-box input:checked {
   background-color: rgb(30, 48, 90);
 }
 
-.user-keywords-container .highlight-keyword-box input:checked::before {
+.highlight-keyword-box input:checked::before {
   transform: scale(2);
 }
 
-.user-keywords-container .highlight-keyword-box label {
+.highlight-keyword-box label {
   cursor: pointer;
 }
 
+.analysis-container {
+  display: flex;
+  align-items: center;
+  column-gap: 2em;
+  row-gap: 0.5em;
+  flex-wrap: wrap;
+  margin: 1em 0;
+}
+
+.analysis-container .detailed-information {
+  display: flex;
+  flex-wrap: nowrap;
+  column-gap: 0.8em;
+  width: 100%;
+}
+
+.analysis-container .detailed-information .tooltip span {
+  top: 24px;
+}
+
+.analysis-container h2 {
+  font-size: 1.1em;
+  align-self: flex-start;
+}
+
 .score-container {
+  flex: 1;
   display: flex;
   flex-direction: column;
   align-items: center;
   text-align: center;
   padding: 0.2em;
-  margin-top: 0.5em;
 }
 
 .score-container p {
@@ -523,20 +625,6 @@ html body {
   background-color: #2e7d32;
   color: #fff;
   border-color: #075418;
-}
-
-.analysis-container {
-  display: flex;
-  align-items: center;
-  column-gap: 2em;
-  row-gap: 0.5em;
-  flex-wrap: wrap;
-  margin: 1em 0;
-}
-
-.analysis-container h2 {
-  font-size: 1.1em;
-  align-self: flex-start;
 }
 
 .analysis-container ul {
@@ -584,17 +672,6 @@ html body {
   display: flex;
   column-gap: 0.3em;
   margin-top: 0.8em;
-}
-
-.keywords-highlight-colors-container .detailed-information .tooltip {
-  position: relative;
-  flex: 1 1 auto;
-  display: flex;
-}
-
-.keywords-highlight-colors-container .detailed-information .tooltip .tooltip-content {
-  display: flex;
-  align-items: center;
 }
 
 .keywords-highlight-colors-container h3 {
